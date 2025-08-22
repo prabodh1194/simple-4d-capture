@@ -40,4 +40,27 @@
           case .drop: return "Drop"
           }
       }
+      
+      var keyboardShortcut: String {
+          switch self {
+          case .doIt: return "1"
+          case .deferIt: return "2"
+          case .delegate: return "3"
+          case .drop: return "4"
+          }
+      }
+      
+      var displayNameWithShortcut: String {
+          return "⌘\(keyboardShortcut) \(displayName)"
+      }
+      
+      static func from(keyboardInput: String) -> Category? {
+          switch keyboardInput {
+          case "1": return .doIt
+          case "2": return .deferIt
+          case "3": return .delegate
+          case "4": return .drop
+          default: return nil
+          }
+      }
   }

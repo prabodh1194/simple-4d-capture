@@ -5,7 +5,7 @@ struct MenuBarView: View {
     @State private var inputText = ""
     @State private var isSubmitting = false
     @StateObject private var reminderManager = ReminderManager()
-
+    
     var body: some View {
         VStack(spacing: 12) {
             TextField("What needs to be captured?", text: $inputText)
@@ -23,17 +23,8 @@ struct MenuBarView: View {
 
             HStack(spacing: 8) {
                 ForEach(Category.allCases, id: \.self) { category in
-                    Button(category.displayName) {
-                        guard reminderManager.isValidInput(inputText) else { return }
-
-                        isSubmitting = true
-                        Task {
-                            await reminderManager.addReminder(text: inputText, category: category)
-                            if reminderManager.errorMessage == nil {
-                                inputText = "" // Clear on success
-                            }
-                            isSubmitting = false
-                        }
+                    Button(category.displayNameWithShortcut) {
+                        submitReminder(for: category)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(isSubmitting || inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -56,10 +47,35 @@ struct MenuBarView: View {
         }
         .padding()
         .frame(width: 340)
+        .onKeyPress { keyPress in
+            // Handle Cmd+Number combinations
+            if keyPress.modifiers.contains(.command) {
+                if let category = Category.from(keyboardInput: keyPress.characters) {
+                    print("Cmd+\(keyPress.characters) pressed - submitting to \(category)")
+                    submitReminder(for: category)
+                    return .handled
+                }
+            }
+            
+            return .ignored
+        }
         .onAppear {
             Task {
                 await reminderManager.initialize()
             }
+        }
+    }
+    
+    private func submitReminder(for category: Category) {
+        guard reminderManager.isValidInput(inputText) else { return }
+        
+        isSubmitting = true
+        Task {
+            await reminderManager.addReminder(text: inputText, category: category)
+            if reminderManager.errorMessage == nil {
+                inputText = "" // Clear on success
+            }
+            isSubmitting = false
         }
     }
 }
@@ -67,4 +83,3 @@ struct MenuBarView: View {
 #Preview {
     MenuBarView()
 }
-
