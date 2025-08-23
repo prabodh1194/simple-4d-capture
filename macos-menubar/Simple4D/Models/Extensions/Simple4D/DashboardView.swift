@@ -76,10 +76,23 @@ struct DashboardView: View {
             if isLoading {
                 ProgressView("Loading reminders...")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if activeReminders.isEmpty {
-                emptyStateView
             } else {
-                mainContentView
+                ScrollView {
+                    LazyVStack(spacing: 20) {
+                        // Active Tasks Section
+                        if activeReminders.isEmpty {
+                            emptyStateContentView
+                        } else {
+                            activeTasksContentView
+                        }
+
+                        // Recently Completed Section (always show when enabled)
+                        if showingCompleted {
+                            completedSectionView
+                        }
+                    }
+                    .padding(.vertical, 12)
+                }
             }
         }
         .frame(minWidth: 800, minHeight: 500)
@@ -156,7 +169,7 @@ struct DashboardView: View {
         }
     }
 
-    private var emptyStateView: some View {
+    private var emptyStateContentView: some View {
         VStack(spacing: 16) {
             Image(systemName: "checkmark.circle")
                 .font(.system(size: 48))
@@ -171,7 +184,99 @@ struct DashboardView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 40)
+    }
+
+    private var activeTasksContentView: some View {
+        VStack(spacing: 12) {
+            ForEach(organizedReminders.keys.sorted(), id: \.self) { category in
+                if let reminders = organizedReminders[category], !reminders.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(category)
+                                .font(.headline)
+                                .foregroundColor(.primary)
+
+                            Spacer()
+
+                            Text("\(reminders.count) items")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.secondary.opacity(0.1))
+                                .cornerRadius(3)
+                        }
+
+                        VStack(spacing: 4) {
+                            ForEach(reminders, id: \.calendarItemIdentifier) { reminder in
+                                CompactTaskRowView(
+                                    reminder: reminder,
+                                    isSelected: selectedReminders.contains(reminder.calendarItemIdentifier),
+                                    onComplete: { requestCompletion($0) },
+                                    onDefer: { deferReminder($0) },
+                                    onDelete: { deleteReminder($0) }
+                                )
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+            }
+        }
+    }
+
+    private var completedSectionView: some View {
+        VStack(spacing: 20) {
+            Divider()
+                .padding(.horizontal, 16)
+
+            VStack(spacing: 20) {
+                // Section title with time range picker
+                HStack {
+                    Text("Recently Completed")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+
+                    Spacer()
+
+                    Picker("Time Range", selection: $completedTimeRange) {
+                        ForEach(CompletedTimeRange.allCases, id: \.self) { range in
+                            Text(range.displayName).tag(range)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    .frame(maxWidth: 300)
+                }
+                .padding(.horizontal, 16)
+
+                // Completed tasks list or empty state
+                if completedReminders.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle")
+                            .font(.system(size: 32))
+                            .foregroundColor(.secondary)
+
+                        Text("No completed tasks in \(completedTimeRange.displayName.lowercased())")
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 24)
+                } else {
+                    VStack(spacing: 4) {
+                        ForEach(completedReminders, id: \.calendarItemIdentifier) { reminder in
+                            CompletedTaskRowView(
+                                reminder: reminder,
+                                onUncomplete: { uncompleteReminder($0) },
+                                onDelete: { deleteReminder($0) }
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+            }
+        }
     }
 
     private var mainContentView: some View {
