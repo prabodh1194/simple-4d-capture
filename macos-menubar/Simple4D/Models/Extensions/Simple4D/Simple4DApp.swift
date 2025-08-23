@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 @main
 struct Simple4DApp: App {
@@ -41,7 +41,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func statusBarButtonClicked(_ sender: NSStatusBarButton) {
         let event = NSApp.currentEvent!
-        
+
         if event.type == .rightMouseUp {
             // Right click - show context menu
             showContextMenu()
@@ -50,25 +50,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             togglePopover()
         }
     }
-    
+
     private func showContextMenu() {
         let menu = NSMenu()
-        
+
         let dashboardItem = NSMenuItem(title: "Open Dashboard", action: #selector(openDashboard), keyEquivalent: "d")
         dashboardItem.target = self
         menu.addItem(dashboardItem)
-        
+
         menu.addItem(NSMenuItem.separator())
-        
+
         let quitItem = NSMenuItem(title: "Quit Simple4D", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
-        
+
         statusItem?.popUpMenu(menu)
     }
 
     @objc func togglePopover() {
-        guard let statusButton = statusItem?.button else { return }
+        guard let statusButton = statusItem?.button else {
+            return
+        }
 
         if let popover = popover {
             if popover.isShown {
@@ -82,38 +84,38 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
-    
+
     @objc func openDashboard() {
         // Close popover if open
         popover?.performClose(nil)
-        
+
         // Create or show dashboard window
         if dashboardWindow == nil {
             let dashboardView = DashboardView()
             let hostingController = NSHostingController(rootView: dashboardView)
-            
+
             dashboardWindow = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
                 styleMask: [.titled, .closable, .resizable, .miniaturizable],
                 backing: .buffered,
                 defer: false
             )
-            
+
             dashboardWindow?.contentViewController = hostingController
             dashboardWindow?.title = "4D Dashboard"
             dashboardWindow?.center()
             dashboardWindow?.setFrameAutosaveName("DashboardWindow")
-            
+
             // Handle window closing
             dashboardWindow?.delegate = DashboardWindowDelegate { [weak self] in
                 self?.dashboardWindow = nil
             }
         }
-        
+
         dashboardWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
-    
+
     @objc func quitApp() {
         NSApplication.shared.terminate(nil)
     }
@@ -127,14 +129,13 @@ extension AppDelegate: HotKeyDelegate {
 
 class DashboardWindowDelegate: NSObject, NSWindowDelegate {
     private let onClose: () -> Void
-    
+
     init(onClose: @escaping () -> Void) {
         self.onClose = onClose
         super.init()
     }
-    
+
     func windowWillClose(_ notification: Notification) {
         onClose()
     }
 }
-

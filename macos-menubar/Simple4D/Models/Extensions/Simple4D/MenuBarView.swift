@@ -1,17 +1,17 @@
-import SwiftUI
 import EventKit
+import SwiftUI
 
 struct MenuBarView: View {
     @State private var inputText = ""
     @State private var isSubmitting = false
     @StateObject private var reminderManager = ReminderManager()
-    
+
     let onOpenDashboard: () -> Void
-    
+
     init(onOpenDashboard: @escaping () -> Void = {}) {
         self.onOpenDashboard = onOpenDashboard
     }
-    
+
     var body: some View {
         VStack(spacing: 12) {
             // Header with dashboard button
@@ -19,9 +19,9 @@ struct MenuBarView: View {
                 Text("Quick Capture")
                     .font(.headline)
                     .foregroundColor(.secondary)
-                
+
                 Spacer()
-                
+
                 Button(action: onOpenDashboard) {
                     Image(systemName: "list.bullet.rectangle")
                         .foregroundColor(.accentColor)
@@ -30,7 +30,7 @@ struct MenuBarView: View {
                 .help("Open Dashboard (⌘D)")
             }
             .frame(width: 300)
-            
+
             TextField("What needs to be captured?", text: $inputText)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .frame(width: 300)
@@ -72,11 +72,11 @@ struct MenuBarView: View {
         .frame(width: 340)
         .onKeyPress { keyPress in
             // Handle Cmd+D for dashboard
-            if keyPress.modifiers.contains(.command) && keyPress.characters == "d" {
+            if keyPress.modifiers.contains(.command), keyPress.characters == "d" {
                 onOpenDashboard()
                 return .handled
             }
-            
+
             // Handle Cmd+Number combinations
             if keyPress.modifiers.contains(.command) {
                 if let category = Category.from(keyboardInput: keyPress.characters) {
@@ -85,7 +85,7 @@ struct MenuBarView: View {
                     return .handled
                 }
             }
-            
+
             return .ignored
         }
         .onAppear {
@@ -94,10 +94,12 @@ struct MenuBarView: View {
             }
         }
     }
-    
+
     private func submitReminder(for category: Category) {
-        guard reminderManager.isValidInput(inputText) else { return }
-        
+        guard reminderManager.isValidInput(inputText) else {
+            return
+        }
+
         isSubmitting = true
         Task {
             await reminderManager.addReminder(text: inputText, category: category)
@@ -109,6 +111,8 @@ struct MenuBarView: View {
     }
 }
 
-#Preview {
-    MenuBarView()
+struct MenuBarView_Previews: PreviewProvider {
+    static var previews: some View {
+        MenuBarView()
+    }
 }

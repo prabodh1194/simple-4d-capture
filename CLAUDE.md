@@ -38,18 +38,18 @@ Leveraging Apple Reminders' native notification system to add timely task dispos
 - **Completion Analytics**: Track productivity patterns
 
 ### Benefits of Wrapper Approach
-✅ Uses Apple's robust notification system  
-✅ Works across all Apple devices automatically  
-✅ Free Siri integration ("Hey Siri, remind me to...")  
-✅ Location-based reminders  
-✅ No custom notification code needed  
+✅ Uses Apple's robust notification system
+✅ Works across all Apple devices automatically
+✅ Free Siri integration ("Hey Siri, remind me to...")
+✅ Location-based reminders
+✅ No custom notification code needed
 ✅ iCloud sync built-in
 
 ## 🎯 What We Built
 
-**macOS Menu Bar App**: 
+**macOS Menu Bar App**:
 - Global hotkey (⌘⇧Space) opens capture popup
-- Keyboard shortcuts (⌘1/2/3/4) for instant category selection  
+- Keyboard shortcuts (⌘1/2/3/4) for instant category selection
 - Saves directly to Apple Reminders lists
 - Auto-clears for next capture
 
@@ -97,7 +97,7 @@ Leveraging Apple Reminders' native notification system to add timely task dispos
 
 ### 🎯 Performance Results
 - ✅ Launch app in ~1 second (beats <2s target)
-- ✅ Capture + save workflow in ~3 seconds (beats <10s target)  
+- ✅ Capture + save workflow in ~3 seconds (beats <10s target)
 - ✅ Works offline, syncs when online via iCloud
 - ✅ Zero configuration after Reminders lists setup
 
@@ -134,9 +134,9 @@ macos-menubar/
 - Hotkey for quick access
 
 ### 2. iOS Shortcuts (4 shortcuts)
-- "Add to Do" 
+- "Add to Do"
 - "Add to Defer"
-- "Add to Delegate" 
+- "Add to Delegate"
 - "Add to Drop"
 
 ## 📦 Key Features

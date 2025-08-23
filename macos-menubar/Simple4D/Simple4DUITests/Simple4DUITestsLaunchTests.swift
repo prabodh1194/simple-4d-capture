@@ -8,7 +8,6 @@
 import XCTest
 
 final class Simple4DUITestsLaunchTests: XCTestCase {
-
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true
     }
