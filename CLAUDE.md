@@ -7,6 +7,44 @@ Quick capture work items into Do/Defer/Delegate/Drop categories across Apple dev
 **macOS Menu Bar App**: ✅ COMPLETED - Fully functional with keyboard shortcuts
 **iOS Shortcuts**: 🔄 PLANNED - iOS shortcuts for voice/text input
 
+## 🔄 Evolution: Smart Reminders Wrapper
+
+Leveraging Apple Reminders' native notification system to add timely task disposal without reinventing the wheel.
+
+### Planned Enhancements
+
+#### Phase 1: Smart Due Dates & Alerts
+- **Do items**: Auto-set due date for today/tomorrow with morning reminder
+- **Defer items**: Auto-set for next week with weekly review prompt
+- **Delegate items**: Auto-set 3-day follow-up reminder
+- **Drop items**: No due date (archive list)
+
+#### Phase 2: Two-Way Sync Dashboard
+- **Quick View**: Show today's Do items and overdue tasks in menu bar
+- **Batch Actions**: Complete all, defer all, reschedule multiple
+- **Stats Display**: "5 Do, 3 Defer, 2 Delegate" at a glance
+- **Pull to Refresh**: Sync with Reminders app changes
+
+#### Phase 3: Smart Templates
+- **Preset Patterns**: "Daily standup" → Do today 9 AM
+- **Recurring Tasks**: Auto-create weekly reviews
+- **Context Tags**: #home, #work, #errands in notes field
+- **Priority Levels**: Use Reminders priority (1-9) for urgency
+
+#### Phase 4: Advanced Features
+- **Weekly Review Mode**: See all deferred items at once
+- **Delegation Tracking**: Follow-up reminders for delegated tasks
+- **Location-Based**: Trigger reminders at specific locations
+- **Completion Analytics**: Track productivity patterns
+
+### Benefits of Wrapper Approach
+✅ Uses Apple's robust notification system  
+✅ Works across all Apple devices automatically  
+✅ Free Siri integration ("Hey Siri, remind me to...")  
+✅ Location-based reminders  
+✅ No custom notification code needed  
+✅ iCloud sync built-in
+
 ## 🎯 What We Built
 
 **macOS Menu Bar App**: 
@@ -40,13 +78,20 @@ Quick capture work items into Do/Defer/Delegate/Drop categories across Apple dev
 - iOS shortcuts for voice/text input
 - Basic error handling
 
+### 🚀 IN SCOPE (Wrapper Enhancements)
+- Due dates via Reminders API (auto-set per category)
+- Priority levels via Reminders (1-9 scale)
+- Alert notifications via Reminders
+- Two-way sync with Reminders lists
+- Dashboard view of active tasks
+- Batch operations on tasks
+- Template system for common tasks
+
 ### ❌ OUT OF SCOPE (Explicitly Excluded)
 - Rich text editing or formatting
 - Custom storage/sync (use Apple's)
-- Advanced UI/UX (keep minimal)
-- Priority levels or due dates
-- Category customization
-- Analytics or metrics
+- Custom notification system (use Reminders')
+- Category customization beyond 4D
 - File attachments
 - Multi-line input
 
@@ -115,4 +160,41 @@ macos-menubar/
 **Time to Build**: ~4 hours from planning to completion
 **Key Challenge Solved**: Reliable keyboard navigation with Cmd+Number shortcuts
 
-**Next**: iOS shortcuts implementation for mobile capture workflow
+**Next Phase**: Transform into smart Reminders wrapper with:
+- Auto due dates per category
+- Two-way sync dashboard
+- Batch operations
+- Template system
+
+## 📋 Implementation Roadmap
+
+### Phase 1: Enhanced Reminder Creation (2-3 hours)
+- Modify `ReminderManager.swift` to add due dates
+- Add priority levels (1-9) based on input markers (!, !!, !!!)
+- Set alert times (Do=9am, Defer=Monday 9am, Delegate=3 days)
+- Add notes field for context/tags
+
+### Phase 2: Dashboard View (3-4 hours)
+- Create `DashboardView.swift` with task list
+- Implement fetch from Reminders lists
+- Add quick complete/reschedule actions
+- Show overdue items prominently
+- Add pull-to-refresh
+
+### Phase 3: Smart Templates (2 hours)
+- Create `TemplateManager.swift`
+- Define common patterns (daily standup, weekly review)
+- Add quick template buttons to MenuBarView
+- Support recurring task creation
+
+### Phase 4: Batch Operations (2 hours)
+- Add multi-select in dashboard
+- Implement bulk complete/defer/drop
+- Create "Review Mode" for weekly processing
+- Add statistics view
+
+### Technical Stack
+- **EventKit Enhanced**: Full EKReminder properties (due date, priority, alerts)
+- **SwiftUI**: Dashboard and enhanced UI
+- **Combine**: Reactive updates from Reminders changes
+- **UserDefaults**: Store template preferences

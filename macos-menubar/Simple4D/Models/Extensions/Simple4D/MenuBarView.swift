@@ -6,8 +6,31 @@ struct MenuBarView: View {
     @State private var isSubmitting = false
     @StateObject private var reminderManager = ReminderManager()
     
+    let onOpenDashboard: () -> Void
+    
+    init(onOpenDashboard: @escaping () -> Void = {}) {
+        self.onOpenDashboard = onOpenDashboard
+    }
+    
     var body: some View {
         VStack(spacing: 12) {
+            // Header with dashboard button
+            HStack {
+                Text("Quick Capture")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                Button(action: onOpenDashboard) {
+                    Image(systemName: "list.bullet.rectangle")
+                        .foregroundColor(.accentColor)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .help("Open Dashboard (⌘D)")
+            }
+            .frame(width: 300)
+            
             TextField("What needs to be captured?", text: $inputText)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .frame(width: 300)
@@ -48,6 +71,12 @@ struct MenuBarView: View {
         .padding()
         .frame(width: 340)
         .onKeyPress { keyPress in
+            // Handle Cmd+D for dashboard
+            if keyPress.modifiers.contains(.command) && keyPress.characters == "d" {
+                onOpenDashboard()
+                return .handled
+            }
+            
             // Handle Cmd+Number combinations
             if keyPress.modifiers.contains(.command) {
                 if let category = Category.from(keyboardInput: keyPress.characters) {
