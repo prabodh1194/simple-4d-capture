@@ -35,15 +35,27 @@
           switch status {
           case .notDetermined:
               do {
-                  let granted = try await eventStore.requestAccess(to: .reminder)
-                  isAuthorized = granted
-                  if !granted {
-                      errorMessage = "Reminders access denied"
+                  if #available(macOS 14.0, *) {
+                      let granted = try await eventStore.requestFullAccessToReminders()
+                      isAuthorized = granted
+                      if !granted {
+                          errorMessage = "Reminders access denied"
+                      }
+                  } else {
+                      let granted = try await eventStore.requestAccess(to: .reminder)
+                      isAuthorized = granted
+                      if !granted {
+                          errorMessage = "Reminders access denied"
+                      }
                   }
               } catch {
                   errorMessage = "Failed to request access: \(error.localizedDescription)"
               }
           case .authorized:
+              isAuthorized = true
+          case .fullAccess:
+              isAuthorized = true
+          case .writeOnly:
               isAuthorized = true
           case .denied, .restricted:
               isAuthorized = false

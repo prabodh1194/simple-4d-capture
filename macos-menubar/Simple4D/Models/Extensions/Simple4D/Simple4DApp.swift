@@ -21,8 +21,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Create menu bar item
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem?.button?.image = NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "4D Capture")
-        statusItem?.button?.action = #selector(togglePopover)
+        statusItem?.button?.action = #selector(statusBarButtonClicked(_:))
         statusItem?.button?.target = self
+        statusItem?.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
 
         // Create popover
         popover = NSPopover()
@@ -35,6 +36,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if !(hotKeyManager?.registerHotKey() ?? false) {
             print("Failed to register global hotkey")
         }
+    }
+
+    @objc func statusBarButtonClicked(_ sender: NSStatusBarButton) {
+        let event = NSApp.currentEvent!
+        
+        if event.type == .rightMouseUp {
+            // Right click - show context menu
+            showContextMenu()
+        } else {
+            // Left click - toggle popover
+            togglePopover()
+        }
+    }
+    
+    private func showContextMenu() {
+        let menu = NSMenu()
+        let quitItem = NSMenuItem(title: "Quit Simple4D", action: #selector(quitApp), keyEquivalent: "q")
+        quitItem.target = self
+        menu.addItem(quitItem)
+        
+        statusItem?.popUpMenu(menu)
     }
 
     @objc func togglePopover() {
@@ -51,6 +73,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
+    }
+    
+    @objc func quitApp() {
+        NSApplication.shared.terminate(nil)
     }
 }
 
