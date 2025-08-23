@@ -1,12 +1,40 @@
 import EventKit
 import SwiftUI
 
+enum CompletedTimeRange: String, CaseIterable {
+    case day = "24h"
+    case threeDays = "3d"
+    case week = "1w"
+    case twoWeeks = "2w"
+
+    var displayName: String {
+        switch self {
+        case .day: return "24 Hours"
+        case .threeDays: return "3 Days"
+        case .week: return "1 Week"
+        case .twoWeeks: return "2 Weeks"
+        }
+    }
+
+    var timeInterval: TimeInterval {
+        switch self {
+        case .day: return 24 * 60 * 60
+        case .threeDays: return 3 * 24 * 60 * 60
+        case .week: return 7 * 24 * 60 * 60
+        case .twoWeeks: return 14 * 24 * 60 * 60
+        }
+    }
+}
+
 struct DashboardView: View {
     @StateObject private var reminderManager = ReminderManager()
     @State private var activeReminders: [EKReminder] = []
+    @State private var completedReminders: [EKReminder] = []
     @State private var isLoading = false
     @State private var selectedReminders: Set<String> = []
     @State private var showingStats = false
+    @State private var showingCompleted = false
+    @State private var completedTimeRange: CompletedTimeRange = .day
     @State private var showingCompletionConfirmation = false
     @State private var reminderToComplete: EKReminder?
 
@@ -21,6 +49,11 @@ struct DashboardView: View {
                 Spacer()
 
                 HStack(spacing: 12) {
+                    Button("Completed") {
+                        showingCompleted.toggle()
+                    }
+                    .buttonStyle(.bordered)
+
                     Button("Stats") {
                         showingStats.toggle()
                     }
@@ -52,6 +85,16 @@ struct DashboardView: View {
         .frame(minWidth: 800, minHeight: 500)
         .onAppear {
             initializeAndRefresh()
+        }
+        .onChange(of: completedTimeRange) { _ in
+            if showingCompleted {
+                refreshCompletedReminders()
+            }
+        }
+        .onChange(of: showingCompleted) { newValue in
+            if newValue {
+                refreshCompletedReminders()
+            }
         }
         .alert("Complete Task", isPresented: $showingCompletionConfirmation) {
             Button("Cancel", role: .cancel) {
@@ -200,6 +243,44 @@ struct DashboardView: View {
                         dueDateSection
                     }
                     .padding(.horizontal, 16)
+                }
+
+                // Recently Completed Section
+                if showingCompleted, !completedReminders.isEmpty {
+                    Divider()
+                        .padding(.horizontal, 16)
+
+                    VStack(spacing: 20) {
+                        // Section title with time range picker
+                        HStack {
+                            Text("Recently Completed")
+                                .font(.largeTitle)
+                                .fontWeight(.bold)
+
+                            Spacer()
+
+                            Picker("Time Range", selection: $completedTimeRange) {
+                                ForEach(CompletedTimeRange.allCases, id: \.self) { range in
+                                    Text(range.displayName).tag(range)
+                                }
+                            }
+                            .pickerStyle(SegmentedPickerStyle())
+                            .frame(maxWidth: 300)
+                        }
+                        .padding(.horizontal, 16)
+
+                        // Completed tasks list
+                        VStack(spacing: 4) {
+                            ForEach(completedReminders, id: \.calendarItemIdentifier) { reminder in
+                                CompletedTaskRowView(
+                                    reminder: reminder,
+                                    onUncomplete: { uncompleteReminder($0) },
+                                    onDelete: { deleteReminder($0) }
+                                )
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                    }
                 }
             }
             .padding(.vertical, 12)
@@ -472,7 +553,22 @@ struct DashboardView: View {
         Task {
             let reminders = await reminderManager.fetchActiveReminders()
             activeReminders = reminders
+
+            // Fetch completed reminders if showing completed section
+            if showingCompleted {
+                let since = Date().addingTimeInterval(-completedTimeRange.timeInterval)
+                completedReminders = await reminderManager.fetchCompletedReminders(since: since)
+            }
+
             isLoading = false
+        }
+    }
+
+    @MainActor
+    private func refreshCompletedReminders() {
+        Task {
+            let since = Date().addingTimeInterval(-completedTimeRange.timeInterval)
+            completedReminders = await reminderManager.fetchCompletedReminders(since: since)
         }
     }
 
@@ -498,6 +594,13 @@ struct DashboardView: View {
     private func deleteReminder(_ reminder: EKReminder) {
         Task {
             await reminderManager.deleteReminder(reminder)
+            await refreshReminders()
+        }
+    }
+
+    private func uncompleteReminder(_ reminder: EKReminder) {
+        Task {
+            await reminderManager.uncompleteReminder(reminder)
             await refreshReminders()
         }
     }

@@ -313,6 +313,58 @@ class ReminderManager: ObservableObject {
         }
     }
 
+    func fetchCompletedReminders(since: Date) async -> [EKReminder] {
+        guard isAuthorized else {
+            return []
+        }
+
+        var allReminders: [EKReminder] = []
+
+        // Fetch from all 4D lists
+        for category in Category.allCases {
+            let listName = category.listName
+            guard let calendar = cachedLists[listName] else {
+                continue
+            }
+
+            // Create predicate for completed reminders in this calendar since the specified date
+            let predicate = eventStore.predicateForCompletedReminders(
+                withCompletionDateStarting: since,
+                ending: nil,
+                calendars: [calendar]
+            )
+
+            // Use completion handler pattern for reminders
+            await withCheckedContinuation { continuation in
+                eventStore.fetchReminders(matching: predicate) { reminders in
+                    if let reminders = reminders {
+                        // Filter by completion date to ensure we only get reminders completed since the specified date
+                        let filteredReminders = reminders.filter { reminder in
+                            guard let completionDate = reminder.completionDate else {
+                                return false
+                            }
+                            return completionDate >= since
+                        }
+                        allReminders.append(contentsOf: filteredReminders)
+                    } else {
+                        print("Error fetching completed reminders from \(listName)")
+                    }
+                    continuation.resume()
+                }
+            }
+        }
+
+        // Sort by completion date, most recent first
+        return allReminders.sorted { lhs, rhs in
+            guard let lhsDate = lhs.completionDate,
+                  let rhsDate = rhs.completionDate
+            else {
+                return lhs.completionDate != nil
+            }
+            return lhsDate > rhsDate
+        }
+    }
+
     func completeReminder(_ reminder: EKReminder) async {
         do {
             reminder.isCompleted = true
@@ -391,6 +443,16 @@ class ReminderManager: ObservableObject {
             try eventStore.remove(reminder, commit: true)
         } catch {
             errorMessage = "Failed to delete reminder: \(error.localizedDescription)"
+        }
+    }
+
+    func uncompleteReminder(_ reminder: EKReminder) async {
+        do {
+            reminder.isCompleted = false
+            reminder.completionDate = nil
+            try eventStore.save(reminder, commit: true)
+        } catch {
+            errorMessage = "Failed to uncomplete reminder: \(error.localizedDescription)"
         }
     }
 }

@@ -21,7 +21,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Create menu bar item
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem?.button?.image = NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "4D Capture")
+        // Use custom 4D gradient icon for menu bar
+        if let customIcon = NSImage(named: "menubar_icon") {
+            let menuBarIcon = customIcon.copy() as! NSImage
+            menuBarIcon.size = NSSize(width: 18, height: 18)
+            menuBarIcon.isTemplate = false // Keep the colorful gradient
+            statusItem?.button?.image = menuBarIcon
+        } else {
+            // Fallback to system icon if custom icon not found
+            statusItem?.button?.image = NSImage(
+                systemSymbolName: "square.grid.2x2",
+                accessibilityDescription: "4D Capture"
+            )
+        }
         statusItem?.button?.action = #selector(statusBarButtonClicked(_:))
         statusItem?.button?.target = self
         statusItem?.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
