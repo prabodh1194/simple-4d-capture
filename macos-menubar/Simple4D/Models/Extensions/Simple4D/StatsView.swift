@@ -31,6 +31,7 @@ struct StatsView: View {
                 }
                 .padding()
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 600, minHeight: 500)
     }
