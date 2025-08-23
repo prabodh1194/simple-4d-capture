@@ -7,6 +7,8 @@ struct DashboardView: View {
     @State private var isLoading = false
     @State private var selectedReminders: Set<String> = []
     @State private var showingStats = false
+    @State private var showingCompletionConfirmation = false
+    @State private var reminderToComplete: EKReminder?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -44,15 +46,27 @@ struct DashboardView: View {
             } else if activeReminders.isEmpty {
                 emptyStateView
             } else {
-                remindersList
+                mainContentView
             }
         }
         .frame(minWidth: 800, minHeight: 500)
         .onAppear {
             initializeAndRefresh()
         }
-        .sheet(isPresented: $showingStats) {
-            StatsView(reminders: activeReminders)
+        .alert("Complete Task", isPresented: $showingCompletionConfirmation) {
+            Button("Cancel", role: .cancel) {
+                reminderToComplete = nil
+            }
+            Button("Complete") {
+                if let reminder = reminderToComplete {
+                    completeReminder(reminder)
+                }
+                reminderToComplete = nil
+            }
+        } message: {
+            if let reminder = reminderToComplete {
+                Text("Complete '\(reminder.title ?? "Untitled")'?")
+            }
         }
     }
 
@@ -117,43 +131,75 @@ struct DashboardView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var remindersList: some View {
+    private var mainContentView: some View {
         ScrollView {
-            LazyVStack(spacing: 12) {
-                ForEach(organizedReminders.keys.sorted(), id: \.self) { category in
-                    if let reminders = organizedReminders[category], !reminders.isEmpty {
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(category)
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
+            LazyVStack(spacing: 20) {
+                // Tasks Section
+                VStack(spacing: 12) {
+                    ForEach(organizedReminders.keys.sorted(), id: \.self) { category in
+                        if let reminders = organizedReminders[category], !reminders.isEmpty {
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    Text(category)
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
 
-                                Spacer()
+                                    Spacer()
 
-                                Text("\(reminders.count) items")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(Color.secondary.opacity(0.1))
-                                    .cornerRadius(3)
-                            }
+                                    Text("\(reminders.count) items")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(Color.secondary.opacity(0.1))
+                                        .cornerRadius(3)
+                                }
 
-                            // Use compact single-column layout for better space utilization
-                            VStack(spacing: 4) {
-                                ForEach(reminders, id: \.calendarItemIdentifier) { reminder in
-                                    CompactTaskRowView(
-                                        reminder: reminder,
-                                        isSelected: selectedReminders.contains(reminder.calendarItemIdentifier),
-                                        onComplete: { completeReminder($0) },
-                                        onDefer: { deferReminder($0) },
-                                        onDelete: { deleteReminder($0) }
-                                    )
+                                VStack(spacing: 4) {
+                                    ForEach(reminders, id: \.calendarItemIdentifier) { reminder in
+                                        CompactTaskRowView(
+                                            reminder: reminder,
+                                            isSelected: selectedReminders.contains(reminder.calendarItemIdentifier),
+                                            onComplete: { requestCompletion($0) },
+                                            onDefer: { deferReminder($0) },
+                                            onDelete: { deleteReminder($0) }
+                                        )
+                                    }
                                 }
                             }
+                            .padding(.horizontal, 16)
+                        }
+                    }
+                }
+
+                // Stats Section
+                if showingStats, !activeReminders.isEmpty {
+                    Divider()
+                        .padding(.horizontal, 16)
+
+                    VStack(spacing: 20) {
+                        // Section title
+                        HStack {
+                            Text("Statistics")
+                                .font(.largeTitle)
+                                .fontWeight(.bold)
+                            Spacer()
                         }
                         .padding(.horizontal, 16)
+
+                        // Overview Cards
+                        overviewSection
+
+                        // Category Breakdown
+                        categorySection
+
+                        // Priority Distribution
+                        prioritySection
+
+                        // Due Date Analysis
+                        dueDateSection
                     }
+                    .padding(.horizontal, 16)
                 }
             }
             .padding(.vertical, 12)
@@ -239,6 +285,180 @@ struct DashboardView: View {
         return parts.isEmpty ? "No active tasks" : parts.joined(separator: ", ")
     }
 
+    // MARK: - Stats Computed Properties
+
+    private var doCount: Int {
+        activeReminders.filter { $0.calendar?.title.contains("Do") == true }.count
+    }
+
+    private var deferCount: Int {
+        activeReminders.filter { $0.calendar?.title.contains("Defer") == true }.count
+    }
+
+    private var delegateCount: Int {
+        activeReminders.filter { $0.calendar?.title.contains("Delegate") == true }.count
+    }
+
+    private var dropCount: Int {
+        activeReminders.filter { $0.calendar?.title.contains("Drop") == true }.count
+    }
+
+    private var highPriorityCount: Int {
+        activeReminders.filter { (1 ... 3).contains($0.priority) }.count
+    }
+
+    private var mediumPriorityCount: Int {
+        activeReminders.filter { (4 ... 6).contains($0.priority) }.count
+    }
+
+    private var lowPriorityCount: Int {
+        activeReminders.filter { (7 ... 9).contains($0.priority) }.count
+    }
+
+    private var noPriorityCount: Int {
+        activeReminders.filter { $0.priority == 0 }.count
+    }
+
+    private var overdueCount: Int {
+        let now = Date()
+        return activeReminders.filter { reminder in
+            guard let dueDate = reminder.dueDateComponents?.date else {
+                return false
+            }
+            return dueDate < now && !reminder.isCompleted
+        }.count
+    }
+
+    private var dueTodayCount: Int {
+        let now = Date()
+        return activeReminders.filter { reminder in
+            guard let dueDate = reminder.dueDateComponents?.date else {
+                return false
+            }
+            return Calendar.current.isDate(dueDate, inSameDayAs: now) && !reminder.isCompleted
+        }.count
+    }
+
+    private var dueThisWeekCount: Int {
+        let now = Date()
+        let weekFromNow = Calendar.current.date(byAdding: .weekOfYear, value: 1, to: now)!
+
+        return activeReminders.filter { reminder in
+            guard let dueDate = reminder.dueDateComponents?.date else {
+                return false
+            }
+            return dueDate > now && dueDate <= weekFromNow && !reminder.isCompleted
+        }.count
+    }
+
+    private var dueLaterCount: Int {
+        let now = Date()
+        let weekFromNow = Calendar.current.date(byAdding: .weekOfYear, value: 1, to: now)!
+
+        return activeReminders.filter { reminder in
+            guard let dueDate = reminder.dueDateComponents?.date else {
+                return false
+            }
+            return dueDate > weekFromNow && !reminder.isCompleted
+        }.count
+    }
+
+    private var noDueDateCount: Int {
+        activeReminders.filter { $0.dueDateComponents?.date == nil && !$0.isCompleted }.count
+    }
+
+    // MARK: - Stats View Components
+
+    private var overviewSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Overview")
+                .font(.headline)
+
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 12) {
+                StatCard(
+                    title: "Total Tasks",
+                    value: "\(activeReminders.count)",
+                    color: .blue,
+                    icon: "list.bullet"
+                )
+
+                StatCard(
+                    title: "Overdue",
+                    value: "\(overdueCount)",
+                    color: .red,
+                    icon: "exclamationmark.triangle"
+                )
+
+                StatCard(
+                    title: "Due Today",
+                    value: "\(dueTodayCount)",
+                    color: .orange,
+                    icon: "calendar.badge.clock"
+                )
+
+                StatCard(
+                    title: "High Priority",
+                    value: "\(highPriorityCount)",
+                    color: .red,
+                    icon: "flame"
+                )
+            }
+        }
+    }
+
+    private var categorySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("By Category")
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 8) {
+                CategoryBar(label: "🔥 Do", count: doCount, total: activeReminders.count, color: .red)
+                CategoryBar(label: "📅 Defer", count: deferCount, total: activeReminders.count, color: .orange)
+                CategoryBar(label: "👥 Delegate", count: delegateCount, total: activeReminders.count, color: .blue)
+                CategoryBar(label: "🗂 Drop", count: dropCount, total: activeReminders.count, color: .gray)
+            }
+        }
+    }
+
+    private var prioritySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("By Priority")
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 8) {
+                CategoryBar(
+                    label: "High (!!! 1-3)",
+                    count: highPriorityCount,
+                    total: activeReminders.count,
+                    color: .red
+                )
+                CategoryBar(
+                    label: "Medium (!! 4-6)",
+                    count: mediumPriorityCount,
+                    total: activeReminders.count,
+                    color: .orange
+                )
+                CategoryBar(label: "Low (! 7-9)", count: lowPriorityCount, total: activeReminders.count, color: .yellow)
+                CategoryBar(label: "None", count: noPriorityCount, total: activeReminders.count, color: .gray)
+            }
+        }
+    }
+
+    private var dueDateSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("By Due Date")
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 8) {
+                CategoryBar(label: "Overdue", count: overdueCount, total: activeReminders.count, color: .red)
+                CategoryBar(label: "Due Today", count: dueTodayCount, total: activeReminders.count, color: .orange)
+                CategoryBar(label: "Due This Week", count: dueThisWeekCount, total: activeReminders.count, color: .blue)
+                CategoryBar(label: "Due Later", count: dueLaterCount, total: activeReminders.count, color: .green)
+                CategoryBar(label: "No Due Date", count: noDueDateCount, total: activeReminders.count, color: .gray)
+            }
+        }
+    }
+
     private func initializeAndRefresh() {
         Task {
             await reminderManager.initialize()
@@ -254,6 +474,11 @@ struct DashboardView: View {
             activeReminders = reminders
             isLoading = false
         }
+    }
+
+    private func requestCompletion(_ reminder: EKReminder) {
+        reminderToComplete = reminder
+        showingCompletionConfirmation = true
     }
 
     private func completeReminder(_ reminder: EKReminder) {
