@@ -19,21 +19,42 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var dashboardWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Check for existing app instances
+        if let bundleId = Bundle.main.bundleIdentifier {
+            let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId)
+            let otherInstances = runningApps
+                .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
+
+            if !otherInstances.isEmpty {
+                // Another instance is already running, activate it and quit this one
+                if let existingApp = otherInstances.first {
+                    existingApp.activate()
+                }
+                DispatchQueue.main.async {
+                    NSApp.terminate(nil)
+                }
+                return
+            }
+        }
+
         // Create menu bar item
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        // Use custom 4D gradient icon for menu bar
+
+        // Set up 4D grid icon
         if let customIcon = NSImage(named: "menubar_icon") {
             let menuBarIcon = customIcon.copy() as! NSImage
             menuBarIcon.size = NSSize(width: 18, height: 18)
-            menuBarIcon.isTemplate = false // Keep the colorful gradient
+            menuBarIcon.isTemplate = false
             statusItem?.button?.image = menuBarIcon
+            statusItem?.button?.title = ""
         } else {
-            // Fallback to system icon if custom icon not found
             statusItem?.button?.image = NSImage(
                 systemSymbolName: "square.grid.2x2",
                 accessibilityDescription: "4D Capture"
             )
+            statusItem?.button?.title = ""
         }
+
         statusItem?.button?.action = #selector(statusBarButtonClicked(_:))
         statusItem?.button?.target = self
         statusItem?.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -134,7 +155,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 extension AppDelegate: HotKeyDelegate {
-    func hotKeyPressed() {
+    func captureHotKeyPressed() {
         togglePopover()
     }
 }

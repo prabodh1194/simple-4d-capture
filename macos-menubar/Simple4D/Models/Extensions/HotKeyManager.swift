@@ -9,12 +9,16 @@ import Carbon
 import Cocoa
 
 class HotKeyManager {
-    private var hotKeyRef: EventHotKeyRef?
-    private let hotKeyID = EventHotKeyID(signature: OSType(0x4D4B_4854), id: 1) // 'MKHT'
+    private var captureHotKeyRef: EventHotKeyRef?
+    private let captureHotKeyID = EventHotKeyID(signature: OSType(0x4D4B_4854), id: 1) // 'MKHT'
 
     weak var delegate: HotKeyDelegate?
 
     func registerHotKey() -> Bool {
+        registerCaptureHotKey()
+    }
+
+    private func registerCaptureHotKey() -> Bool {
         let modifiers = UInt32(cmdKey | shiftKey) // Cmd+Shift
         let keyCode = UInt32(kVK_Space) // Space key
 
@@ -23,10 +27,10 @@ class HotKeyManager {
         let status = RegisterEventHotKey(
             keyCode,
             modifiers,
-            hotKeyID,
+            captureHotKeyID,
             GetEventDispatcherTarget(),
             0,
-            &hotKeyRef
+            &captureHotKeyRef
         )
 
         if status == noErr {
@@ -34,10 +38,25 @@ class HotKeyManager {
             var eventHandler: EventHandlerRef?
             InstallEventHandler(
                 GetEventDispatcherTarget(),
-                { _, _, userData -> OSStatus in
-                    if let userData = userData {
+                { _, event, userData -> OSStatus in
+                    if let userData = userData, let event = event {
                         let manager = Unmanaged<HotKeyManager>.fromOpaque(userData).takeUnretainedValue()
-                        manager.delegate?.hotKeyPressed()
+
+                        // Get the hotkey ID from the event
+                        var hotKeyID = EventHotKeyID()
+                        GetEventParameter(
+                            event,
+                            EventParamName(kEventParamDirectObject),
+                            EventParamType(typeEventHotKeyID),
+                            nil,
+                            MemoryLayout<EventHotKeyID>.size,
+                            nil,
+                            &hotKeyID
+                        )
+
+                        if hotKeyID.id == manager.captureHotKeyID.id {
+                            manager.delegate?.captureHotKeyPressed()
+                        }
                     }
                     return noErr
                 },
@@ -54,9 +73,9 @@ class HotKeyManager {
     }
 
     func unregisterHotKey() {
-        if let hotKeyRef = hotKeyRef {
-            UnregisterEventHotKey(hotKeyRef)
-            self.hotKeyRef = nil
+        if let captureHotKeyRef = captureHotKeyRef {
+            UnregisterEventHotKey(captureHotKeyRef)
+            self.captureHotKeyRef = nil
         }
     }
 
@@ -66,5 +85,5 @@ class HotKeyManager {
 }
 
 protocol HotKeyDelegate: AnyObject {
-    func hotKeyPressed()
+    func captureHotKeyPressed()
 }
